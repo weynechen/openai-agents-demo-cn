@@ -1,4 +1,5 @@
-open ai agents 中文示例
+openai agents 原版使用的openai默认的大模型和一些英文的示例，不利于中文环境使用。这里替换为使用deepseek的中文示例。
+
 # 使用
 将代码拷贝下来
 ```bash
@@ -18,7 +19,9 @@ cp .env.example .env
 ```bash
 uv run hello.py
 ```
-观察输出，同时out文件夹下，会有prompt的记录，便于理解agents背后封装的信息
+# 观察
+
+该项目增加了prompt观察功能。在out文件夹下，会有prompt的记录，便于理解agents背后封装的信息
 ```txt
 === Prompt Call #1 ===
 Timestamp: 20251101_142203_925705
