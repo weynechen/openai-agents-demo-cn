@@ -3,14 +3,52 @@ import litellm
 from datetime import datetime as dt
 import json
 from pathlib import Path
+import inspect
+import sys
+
+
+def _detect_caller_filename():
+    """Auto-detect the filename of the script that imported this module."""
+    try:
+        # Try to get the main module filename
+        if hasattr(sys.modules.get('__main__'), '__file__'):
+            main_file = sys.modules['__main__'].__file__
+            if main_file:
+                return Path(main_file).stem
+        
+        # Fallback: inspect the call stack to find the caller
+        frame = inspect.currentframe()
+        if frame and frame.f_back and frame.f_back.f_back:
+            caller_frame = frame.f_back.f_back
+            caller_filename = caller_frame.f_globals.get('__file__')
+            if caller_filename:
+                return Path(caller_filename).stem
+    except Exception:
+        pass
+    
+    # Default fallback
+    return "prompt"
+
+
 # Global state for prompt capture
 _prompt_capture_state = {
     "call_count": 0,
     "output_dir": Path("out/prompt_logs"),
+    "filename_prefix": _detect_caller_filename(),
 }
 
 # Create output directory
 _prompt_capture_state["output_dir"].mkdir(parents=True, exist_ok=True)
+
+
+def set_filename_prefix(prefix: str):
+    """Set custom filename prefix for saved prompts.
+    
+    Args:
+        prefix: The prefix to use for prompt filenames (e.g., 'my_script')
+    """
+    _prompt_capture_state["filename_prefix"] = prefix
+    print(f"[INFO] Prompt filename prefix set to: {prefix}")
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -90,6 +128,7 @@ async def prompt_capture_callback(kwargs, response_obj, start_time, end_time):
         call_count = _prompt_capture_state["call_count"]
         timestamp = dt.now().strftime("%Y%m%d_%H%M%S_%f")
         output_dir = _prompt_capture_state["output_dir"]
+        filename_prefix = _prompt_capture_state["filename_prefix"]
         
         # Extract messages from kwargs
         messages = kwargs.get("messages", [])
@@ -147,12 +186,12 @@ async def prompt_capture_callback(kwargs, response_obj, start_time, end_time):
         }
         
         # Save as JSON with custom encoder
-        json_file = output_dir / f"prompt_{call_count}_{timestamp}.json"
+        json_file = output_dir / f"{filename_prefix}_{call_count}_{timestamp}.json"
         with open(json_file, "w", encoding="utf-8") as f:
             json.dump(prompt_data, f, indent=2, ensure_ascii=False, cls=DateTimeEncoder)
         
         # Save formatted prompt as text
-        txt_file = output_dir / f"prompt_{call_count}_{timestamp}.txt"
+        txt_file = output_dir / f"{filename_prefix}_{call_count}_{timestamp}.txt"
         with open(txt_file, "w", encoding="utf-8") as f:
             f.write(f"=== Prompt Call #{call_count} ===\n")
             f.write(f"Timestamp: {timestamp}\n")
@@ -190,4 +229,4 @@ if not hasattr(litellm, "_async_success_callback") or litellm._async_success_cal
 if prompt_capture_callback not in litellm._async_success_callback:
     litellm._async_success_callback.append(prompt_capture_callback)
 
-print("[INFO] Prompt capture callback registered (sync and async). All prompts will be saved to 'out/prompt_logs' directory.")
+print(f"[INFO] Prompt capture callback registered (sync and async). Filename prefix: '{_prompt_capture_state['filename_prefix']}'. All prompts will be saved to 'out/prompt_logs' directory.")
