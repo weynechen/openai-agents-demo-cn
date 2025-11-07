@@ -27,7 +27,7 @@ from dog_behaviors import get_all_behavior_tools, set_state_manager, set_behavio
 
 
 # Video directory path
-VIDEO_DIR = "/home/ubuntu/project/test/openai_agents/video"
+VIDEO_DIR = "video"
 DEFAULT_VIDEO = f"{VIDEO_DIR}/default.mp4"
 
 
